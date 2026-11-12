@@ -1,0 +1,7 @@
+torch
+torchvision
+aiogram>=3.0.0
+Pillow
+matplotlib
+numpy
+opencv-python-headless
