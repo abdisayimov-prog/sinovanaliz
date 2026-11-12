@@ -36,7 +36,7 @@ from aiogram.types import (
 # SOZLAMALAR (TOKEN VA GITHUB MANZILI)
 # ==============================================================
 BOT_TOKEN = os.getenv("BOT_TOKEN", "BOT_TOKENINI_SHU_YERGA_YOZING")
-GITHUB_URL = os.getenv("GITHUB_URL", "https://github.com/")
+GITHUB_URL = os.getenv("GITHUB_URL", "https://github.com/abdisayimov-prog/sinovanaliz")
 
 # ==============================================================
 # 1. CNN MODELINI YUKLASH
