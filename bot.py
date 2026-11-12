@@ -31,11 +31,12 @@ from aiogram.types import (
     ReplyKeyboardMarkup,
     KeyboardButton
 )
+from aiohttp import web
 
 # ==============================================================
 # SOZLAMALAR (TOKEN VA GITHUB MANZILI)
 # ==============================================================
-BOT_TOKEN = os.getenv("BOT_TOKEN", "BOT_TOKENINI_SHU_YERGA_YOZING")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "9029532267:AAFPwmZV6xl17_Rhb2uUexEpWTzPtYN7b6M")
 GITHUB_URL = os.getenv("GITHUB_URL", "https://github.com/abdisayimov-prog/sinovanaliz")
 
 # ==============================================================
@@ -276,6 +277,23 @@ async def handle_text(message: types.Message):
         parse_mode="HTML"
     )
 
+# ==============================================================
+# RENDER.COM HEALTHCHECK SERVERI (BEPUL HOSTING UCHUN)
+# ==============================================================
+async def health_check(request):
+    return web.Response(text="Bot muvaffaqiyatli ishlab turibdi!")
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get('/', health_check)
+    app.router.add_get('/health', health_check)
+    port = int(os.getenv("PORT", 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"Render veb-serveri {port}-portda faoliyat boshladi.")
+
 async def main():
     if BOT_TOKEN == "BOT_TOKENINI_SHU_YERGA_YOZING":
         print("\n" + "=" * 65)
@@ -284,6 +302,10 @@ async def main():
         print("2. Olingan tokenni bot.py faylidagi BOT_TOKEN qismiga yoki .env ga qo'ying.")
         print("=" * 65 + "\n")
         return
+        
+    # Render.com bepul Web Service portini ochish
+    if os.getenv("PORT"):
+        await start_web_server()
         
     bot = Bot(token=BOT_TOKEN)
     print("Bot muvaffaqiyatli ishga tushdi va xabarlarni kutmoqda...")
