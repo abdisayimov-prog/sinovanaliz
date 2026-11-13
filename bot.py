@@ -14,8 +14,11 @@ import sys
 import io
 import asyncio
 import numpy as np
-import cv2
+
+import matplotlib
+matplotlib.use('Agg') # Linux headless serverlar (Render.com) uchun shart!
 import matplotlib.pyplot as plt
+import cv2
 from PIL import Image
 
 import torch
@@ -190,18 +193,26 @@ async def cmd_help(message: types.Message):
     )
     await message.answer(text, parse_mode="HTML")
 
-@dp.message(F.photo)
+@dp.message(F.photo | F.document)
 async def handle_photo(message: types.Message, bot: Bot):
     status_msg = await message.answer("⏳ <i>Rentgen tasviri qabul qilindi, neyron tarmog'i tahlil qilmoqda...</i>", parse_mode="HTML")
     
     try:
-        # Rasmni yuklab olish
-        photo = message.photo[-1]
         file_io = io.BytesIO()
-        await bot.download(photo, destination=file_io)
+        if message.photo:
+            photo = message.photo[-1]
+            await bot.download(photo, destination=file_io)
+        elif message.document:
+            # Fayl formati rasm ekanini tekshirish
+            mime = message.document.mime_type or ""
+            if not mime.startswith("image/"):
+                await status_msg.edit_text("❌ Iltimos, faqat rasm faylini (.jpeg, .png, .jpg) yuboring.")
+                return
+            await bot.download(message.document, destination=file_io)
+            
         file_io.seek(0)
-        
         raw_img = Image.open(file_io).convert('RGB')
+        raw_img.thumbnail((800, 800)) # Xotirani tejash (Render uchun)
         
         # Inference
         input_tensor = infer_transform(raw_img).unsqueeze(0).to(device)
@@ -268,7 +279,13 @@ async def handle_photo(message: types.Message, bot: Bot):
         await status_msg.delete()
         
     except Exception as e:
-        await status_msg.edit_text(f"❌ Rasmni tahlil qilishda xatolik yuz berdi: {e}")
+        print(f"XATOLIK YUZ BERDI: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        try:
+            await status_msg.edit_text(f"❌ Rasmni tahlil qilishda xatolik yuz berdi: {e}")
+        except Exception:
+            await message.answer(f"❌ Xatolik yuz berdi: {e}")
 
 @dp.message(F.text)
 async def handle_text(message: types.Message):
