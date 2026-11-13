@@ -1,6 +1,6 @@
 """
 Ko'krak Qafasi Rentgen Tahlili - Telegram Bot
-Aiogram 3.x asosida ishlaydi.
+Render.com da yengil va tez ishlash uchun optimallashtirilgan.
 Xususiyatlari:
   - CNN (Convolutional Neural Network) modeli orqali o'pka rentgenini tekshirish
   - "Sog'lom" yoki "O'pka yallig'lanishi aniqlandi" natijasini berish
@@ -14,12 +14,8 @@ import sys
 import io
 import asyncio
 import numpy as np
-
-import matplotlib
-matplotlib.use('Agg') # Linux headless serverlar (Render.com) uchun shart!
-import matplotlib.pyplot as plt
 import cv2
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import torch
 import torch.nn as nn
@@ -30,9 +26,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     FSInputFile,
     InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    ReplyKeyboardMarkup,
-    KeyboardButton
+    InlineKeyboardButton
 )
 from aiohttp import web
 
@@ -100,11 +94,14 @@ infer_transform = transforms.Compose([
 ])
 
 # ==============================================================
-# 2. XAI: METKA (HEATMAP) VA TAQQOSLASH RASMINI YASASH
+# 2. XAI: METKA (HEATMAP) VA TAQQOSLASH RASMINI YASASH (YENGIL VA TEZKOR)
 # ==============================================================
 def create_comparison_card(raw_img, pred_idx, confidence, output_path):
-    orig_np = np.array(raw_img)
-    input_tensor = infer_transform(raw_img).unsqueeze(0).to(device)
+    # Xotirani tejash uchun 512x512 ga o'tkazish
+    processed_img = raw_img.resize((512, 512))
+    orig_np = np.array(processed_img)
+    
+    input_tensor = infer_transform(processed_img).unsqueeze(0).to(device)
     
     # Feature maplarni olish (Heatmap uchun)
     x = input_tensor
@@ -119,46 +116,46 @@ def create_comparison_card(raw_img, pred_idx, confidence, output_path):
     if np.max(heatmap) > 0:
         heatmap /= np.max(heatmap)
         
-    heatmap_resized = cv2.resize(heatmap, (orig_np.shape[1], orig_np.shape[0]))
+    heatmap_resized = cv2.resize(heatmap, (512, 512))
     heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
     heatmap_color = cv2.cvtColor(heatmap_color, cv2.COLOR_BGR2RGB)
     
-    overlayed = cv2.addWeighted(orig_np, 0.55, heatmap_color, 0.45, 0)
-    
-    # Standart sog'lom rentgen rasmi (solishtirish uchun)
-    sample_normal_path = os.path.join(os.path.dirname(__file__), 'test', 'NORMAL', 'NORMAL2-IM-0052-0001.jpeg')
-    if os.path.exists(sample_normal_path):
-        normal_img = Image.open(sample_normal_path).convert('RGB')
-        normal_np = np.array(normal_img)
-    else:
-        normal_np = orig_np # Zaxira
-        
-    fig, axes = plt.subplots(1, 2, figsize=(11, 5), dpi=140)
-    
     if pred_idx == 1:
-        axes[0].imshow(overlayed)
-        axes[0].set_title("🔴 Siz yuborgan rentgen\n(Qizil/Sariq metka: Yallig'lanish o'choqlari)", 
-                          color='#d9534f', fontsize=11, weight='bold', pad=8)
-        axes[0].axis('off')
-        
-        axes[1].imshow(normal_np, cmap='gray')
-        axes[1].set_title("🟢 Taqqoslash uchun: Sog'lom o'pka rentgeni\n(Toza, infiltratlarsiz havo maydonlari)", 
-                          color='#28a745', fontsize=11, weight='bold', pad=8)
-        axes[1].axis('off')
+        # Pnevmoniya: Heatmap metkasini ustiga tushirish
+        left_np = cv2.addWeighted(orig_np, 0.6, heatmap_color, 0.4, 0)
     else:
-        axes[0].imshow(orig_np, cmap='gray')
-        axes[0].set_title("🟢 Siz yuborgan rentgen: Sog'lom o'pka\n(O'pka maydonlari toza, me'yorda)", 
-                          color='#28a745', fontsize=11, weight='bold', pad=8)
-        axes[0].axis('off')
+        left_np = orig_np
         
-        axes[1].imshow(normal_np, cmap='gray')
-        axes[1].set_title("🟢 Standart sog'lom etalon rentgen\n(Patologik o'zgarishlar yo'q)", 
-                          color='#28a745', fontsize=11, weight='bold', pad=8)
-        axes[1].axis('off')
+    # Standart sog'lom rentgen rasmi (solishtirish uchun)
+    sample_normal_path = os.path.join(os.path.dirname(__file__), 'sample_normal.jpg')
+    if os.path.exists(sample_normal_path):
+        normal_img = Image.open(sample_normal_path).convert('RGB').resize((512, 512))
+        right_np = np.array(normal_img)
+    else:
+        right_np = orig_np
         
-    plt.tight_layout()
-    plt.savefig(output_path, bbox_inches='tight', pad_inches=0.15)
-    plt.close()
+    # Ikki tasvirni yonma-yon birlashtirish (512 x 1024)
+    combined_np = np.hstack([left_np, right_np])
+    card_img = Image.fromarray(combined_np)
+    
+    # Yuqori sarlavha panelini yasash (60px balandlik)
+    banner = Image.new('RGB', (1024, 60), color=(25, 35, 48))
+    draw = ImageDraw.Draw(banner)
+    
+    # Banner yozuvlari
+    if pred_idx == 1:
+        draw.text((25, 18), "SIZNING RENTGENINGIZ: O'PKA YALLIG'LANISHI (METKA BILAN)", fill=(255, 110, 110))
+    else:
+        draw.text((25, 18), "SIZNING RENTGENINGIZ: SOG'LOM O'PKA", fill=(110, 255, 110))
+        
+    draw.text((540, 18), "ETALON: ME'YORIY SOG'LOM RENTGEN", fill=(110, 255, 110))
+    
+    # Yakuniy kartochka
+    final_card = Image.new('RGB', (1024, 572))
+    final_card.paste(banner, (0, 0))
+    final_card.paste(card_img, (0, 60))
+    
+    final_card.save(output_path, quality=88)
 
 # ==============================================================
 # 3. AIOGRAM BOT HANDLERLARI
@@ -196,6 +193,7 @@ async def cmd_help(message: types.Message):
 @dp.message(F.photo | F.document)
 async def handle_photo(message: types.Message, bot: Bot):
     status_msg = await message.answer("⏳ <i>Rentgen tasviri qabul qilindi, neyron tarmog'i tahlil qilmoqda...</i>", parse_mode="HTML")
+    temp_img_path = f"temp_result_{message.from_user.id}.jpg"
     
     try:
         file_io = io.BytesIO()
@@ -203,7 +201,6 @@ async def handle_photo(message: types.Message, bot: Bot):
             photo = message.photo[-1]
             await bot.download(photo, destination=file_io)
         elif message.document:
-            # Fayl formati rasm ekanini tekshirish
             mime = message.document.mime_type or ""
             if not mime.startswith("image/"):
                 await status_msg.edit_text("❌ Iltimos, faqat rasm faylini (.jpeg, .png, .jpg) yuboring.")
@@ -212,7 +209,6 @@ async def handle_photo(message: types.Message, bot: Bot):
             
         file_io.seek(0)
         raw_img = Image.open(file_io).convert('RGB')
-        raw_img.thumbnail((800, 800)) # Xotirani tejash (Render uchun)
         
         # Inference
         input_tensor = infer_transform(raw_img).unsqueeze(0).to(device)
@@ -224,8 +220,7 @@ async def handle_photo(message: types.Message, bot: Bot):
             prob_normal = probs[0].item() * 100
             prob_pneumonia = probs[1].item() * 100
             
-        # Taqqoslash kartasini yaratish
-        temp_img_path = f"temp_result_{message.from_user.id}.jpg"
+        # Tezkor va yengil taqqoslash kartasini yaratish (OpenCV + PIL)
         create_comparison_card(raw_img, pred_idx, confidence, temp_img_path)
         
         # Natija matni
@@ -302,7 +297,6 @@ async def health_check(request):
 
 async def start_web_server():
     app = web.Application()
-    # Har qanday so'rov turiga (GET, HEAD, POST) 200 OK qaytarish (UptimeRobot uchun)
     app.router.add_route('*', '/', health_check)
     app.router.add_route('*', '/health', health_check)
     port = int(os.getenv("PORT", 8080))
@@ -316,8 +310,6 @@ async def main():
     if BOT_TOKEN == "BOT_TOKENINI_SHU_YERGA_YOZING":
         print("\n" + "=" * 65)
         print("DIQQAT: Bot ishlashi uchun Telegram BOT_TOKEN kiritilishi kerak!")
-        print("1. Telegramda @BotFather ga kiring va /newbot buyrug'ini bering.")
-        print("2. Olingan tokenni bot.py faylidagi BOT_TOKEN qismiga yoki .env ga qo'ying.")
         print("=" * 65 + "\n")
         return
         
