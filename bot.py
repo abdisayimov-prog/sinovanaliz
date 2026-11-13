@@ -281,18 +281,19 @@ async def handle_text(message: types.Message):
 # RENDER.COM HEALTHCHECK SERVERI (BEPUL HOSTING UCHUN)
 # ==============================================================
 async def health_check(request):
-    return web.Response(text="Bot muvaffaqiyatli ishlab turibdi!")
+    return web.Response(text="Bot muvaffaqiyatli ishlab turibdi!", content_type="text/plain")
 
 async def start_web_server():
     app = web.Application()
-    app.router.add_get('/', health_check)
-    app.router.add_get('/health', health_check)
+    # Har qanday so'rov turiga (GET, HEAD, POST) 200 OK qaytarish (UptimeRobot uchun)
+    app.router.add_route('*', '/', health_check)
+    app.router.add_route('*', '/health', health_check)
     port = int(os.getenv("PORT", 8080))
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
-    print(f"Render veb-serveri {port}-portda faoliyat boshladi.")
+    print(f"Render veb-serveri {port}-portda barcha so'rovlar uchun faoliyat boshladi.")
 
 async def main():
     if BOT_TOKEN == "BOT_TOKENINI_SHU_YERGA_YOZING":
