@@ -144,9 +144,9 @@ def create_comparison_card(raw_img, pred_idx, confidence, output_path):
     
     # Banner yozuvlari
     if pred_idx == 1:
-        draw.text((25, 18), "SIZNING RENTGENINGIZ: O'PKA YALLIG'LANISHI (METKA BILAN)", fill=(255, 110, 110))
+        draw.text((25, 18), f"SIZNING RENTGENINGIZ: O'PKA YALLIG'LANISHI ({confidence:.1f}%)", fill=(255, 110, 110))
     else:
-        draw.text((25, 18), "SIZNING RENTGENINGIZ: SOG'LOM O'PKA", fill=(110, 255, 110))
+        draw.text((25, 18), f"SIZNING RENTGENINGIZ: SOG'LOM ({confidence:.1f}%)", fill=(110, 255, 110))
         
     draw.text((540, 18), "ETALON: ME'YORIY SOG'LOM RENTGEN", fill=(110, 255, 110))
     
@@ -223,11 +223,22 @@ async def handle_photo(message: types.Message, bot: Bot):
         # Tezkor va yengil taqqoslash kartasini yaratish (OpenCV + PIL)
         create_comparison_card(raw_img, pred_idx, confidence, temp_img_path)
         
+        # Ishonchlilik darajasi ko'rsatkichlari
+        filled_bars = int(round(confidence / 10))
+        progress_bar = "█" * filled_bars + "░" * (10 - filled_bars)
+        if confidence >= 90:
+            conf_text = "Juda yuqori aniqlik"
+        elif confidence >= 75:
+            conf_text = "Yuqori aniqlik"
+        else:
+            conf_text = "O'rtacha aniqlik"
+            
         # Natija matni
         if pred_idx == 1:
             caption = (
-                "🔴 <b>DIQQAT: O'PKA YALLIG'LANISHI ANIQLANDI!</b>\n"
-                f"📊 <b>Ishonchlilik darajasi:</b> {confidence:.1f}%\n"
+                "🔴 <b>DIQQAT: O'PKA YALLIG'LANISHI ANIQLANDI!</b>\n\n"
+                f"🎯 <b>Ishonchlilik darajasi:</b> {confidence:.2f}%\n"
+                f"📊 <b>Ko'rsatkich:</b> <code>[{progress_bar}]</code> ({conf_text})\n"
                 f"📈 <i>[O'pka yallig'lanishi: {prob_pneumonia:.1f}% | Sog'lom: {prob_normal:.1f}%]</i>\n\n"
                 "🔍 <b>Nima sababdan bunday xulosa berildi?</b>\n"
                 "• <b>Qizil / Sariq metkalar</b> — neyron tarmoq e'tibor qaratgan sohalar (o'pka to'qimalarida infiltrat, suyuqlik yoki konsolidatsiya mavjudligi).\n"
@@ -237,8 +248,9 @@ async def handle_photo(message: types.Message, bot: Bot):
             )
         else:
             caption = (
-                "🟢 <b>XULOSA: SOG'LOM!</b>\n"
-                f"📊 <b>Ishonchlilik darajasi:</b> {confidence:.1f}%\n"
+                "🟢 <b>XULOSA: SOG'LOM!</b>\n\n"
+                f"🎯 <b>Ishonchlilik darajasi:</b> {confidence:.2f}%\n"
+                f"📊 <b>Ko'rsatkich:</b> <code>[{progress_bar}]</code> ({conf_text})\n"
                 f"📈 <i>[Sog'lom: {prob_normal:.1f}% | O'pka yallig'lanishi: {prob_pneumonia:.1f}%]</i>\n\n"
                 "🔍 <b>Tahlil xulosasi:</b>\n"
                 "• O'pka maydonlarida patologik xiralashishlar, infiltrat yoki suyuqlik to'planishi aniqlanmadi.\n"
