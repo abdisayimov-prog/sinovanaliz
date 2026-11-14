@@ -181,12 +181,12 @@ async def cmd_start(message: types.Message):
 @dp.message(Command("help"))
 async def cmd_help(message: types.Message):
     text = (
-        "ℹ️ <b>Yordam va qo'llanma:</b>\n\n"
+        "ℹ️ <b>Yordam va ko'rsatkichlar haqida:</b>\n\n"
         "1. Shunchaki ko'krak qafasi rentgen rasmini botga yuboring.\n"
-        "2. Neyron tarmoq tasvirni tahlil qilib, natijani va "
-        "yallig'lanish joylari ko'rsatilgan taqqoslama kartani yuboradi.\n\n"
-        "⚠️ <i>Diqqat: Ushbu bot o'quv-amaliy loyiha hisoblanadi. Yakuniy tibbiy tashxis "
-        "uchun mutaxassis shifokor bilan maslahatlashing.</i>"
+        "2. <b>Ko'rsatkichlar nimani anglatadi?</b>\n"
+        "   • 🎯 <b>Ushbu tasvir bo'yicha ishonchlilik:</b> Model aynan siz yuborgan tasvirdagi belgilarga qanchalik ishonch hosil qilgani.\n"
+        "   • 🎓 <b>Modelning umumiy sinov aniqligi:</b> Modelning o'qitishdan so'ng 38 ta yangi rentgen tasviri bo'yicha ko'rsatgan umumiy sinov natijasi (84.21%).\n\n"
+        "⚠️ <i>Diqqat: Ushbu bot o'quv-amaliy loyiha hisoblanadi. Yakuniy tibbiy tashxis uchun mutaxassis shifokor bilan maslahatlashing.</i>"
     )
     await message.answer(text, parse_mode="HTML")
 
@@ -237,9 +237,11 @@ async def handle_photo(message: types.Message, bot: Bot):
         if pred_idx == 1:
             caption = (
                 "🔴 <b>DIQQAT: O'PKA YALLIG'LANISHI ANIQLANDI!</b>\n\n"
-                f"🎯 <b>Ishonchlilik darajasi:</b> {confidence:.2f}%\n"
-                f"📊 <b>Ko'rsatkich:</b> <code>[{progress_bar}]</code> ({conf_text})\n"
+                f"🎯 <b>Ushbu tasvir bo'yicha ishonchlilik:</b> {confidence:.2f}%\n"
+                f"📊 <b>Ishonch darajasi:</b> <code>[{progress_bar}]</code> ({conf_text})\n"
                 f"📈 <i>[O'pka yallig'lanishi: {prob_pneumonia:.1f}% | Sog'lom: {prob_normal:.1f}%]</i>\n\n"
+                "🎓 <b>Modelning umumiy sinov aniqligi:</b> 84.21%\n"
+                "<i>(O'qitishdan so'ng 38 ta mustaqil test rentgenida sinovdan o'tgan)</i>\n\n"
                 "🔍 <b>Nima sababdan bunday xulosa berildi?</b>\n"
                 "• <b>Qizil / Sariq metkalar</b> — neyron tarmoq e'tibor qaratgan sohalar (o'pka to'qimalarida infiltrat, suyuqlik yoki konsolidatsiya mavjudligi).\n"
                 "• <b>Sog'lom o'pka bilan farqi:</b> O'ng tarafdagi sog'lom rentgenda havo nurni to'siqsiz o'tkazgani uchun maydonlar toza ko'rinadi. Sizning tasviringizda esa yallig'lanish tufayli oqish/xira soyalar hosil bo'lgan.\n\n"
@@ -249,9 +251,11 @@ async def handle_photo(message: types.Message, bot: Bot):
         else:
             caption = (
                 "🟢 <b>XULOSA: SOG'LOM!</b>\n\n"
-                f"🎯 <b>Ishonchlilik darajasi:</b> {confidence:.2f}%\n"
-                f"📊 <b>Ko'rsatkich:</b> <code>[{progress_bar}]</code> ({conf_text})\n"
+                f"🎯 <b>Ushbu tasvir bo'yicha ishonchlilik:</b> {confidence:.2f}%\n"
+                f"📊 <b>Ishonch darajasi:</b> <code>[{progress_bar}]</code> ({conf_text})\n"
                 f"📈 <i>[Sog'lom: {prob_normal:.1f}% | O'pka yallig'lanishi: {prob_pneumonia:.1f}%]</i>\n\n"
+                "🎓 <b>Modelning umumiy sinov aniqligi:</b> 84.21%\n"
+                "<i>(O'qitishdan so'ng 38 ta mustaqil test rentgenida sinovdan o'tgan)</i>\n\n"
                 "🔍 <b>Tahlil xulosasi:</b>\n"
                 "• O'pka maydonlarida patologik xiralashishlar, infiltrat yoki suyuqlik to'planishi aniqlanmadi.\n"
                 "• Tasvir me'yoriy sog'lom o'pka etaloniga to'liq mos keladi.\n\n"
